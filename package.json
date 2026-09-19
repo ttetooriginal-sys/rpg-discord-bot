@@ -4,8 +4,8 @@
   "description": "Bot RPG de Discord com economia, coleta, fazenda, PvP, aura e administração",
   "main": "index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start": "node index.js",
+    "dev": "node --watch index.js"
   },
   "engines": { "node": ">=18" },
   "dependencies": {
