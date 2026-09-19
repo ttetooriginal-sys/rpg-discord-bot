@@ -5,6 +5,7 @@ const {
   Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder,
   EmbedBuilder, PermissionFlagsBits
 } = require('discord.js');
+const { joinVoiceChannel } = require('@discordjs/voice');
 
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -31,29 +32,46 @@ const ores = [['Pedra','Comum',40],['Carvão','Comum',100],['Ferro','Incomum',25
 const crops = { maca: ['Maçã', 400, 5], laranja: ['Laranja', 500, 6], uva: ['Uva', 700, 8], morango: ['Morango', 900, 10], cenoura: ['Cenoura', 300, 4], milho: ['Milho', 450, 6], trigo: ['Trigo', 350, 5] };
 
 const commands = [
- new SlashCommandBuilder().setName('perfil').setDescription('Mostra seu perfil RPG'),
- new SlashCommandBuilder().setName('pescar').setDescription('Pesca um peixe'),
- new SlashCommandBuilder().setName('cacar').setDescription('Caça um animal'),
- new SlashCommandBuilder().setName('minerar').setDescription('Busca minérios'),
- new SlashCommandBuilder().setName('plantar').setDescription('Planta uma semente').addStringOption(o=>o.setName('semente').setDescription('Tipo de semente').setRequired(true).addChoices(...Object.keys(crops).map(k=>({name:crops[k][0],value:k})))),
- new SlashCommandBuilder().setName('colher').setDescription('Colhe plantações prontas'),
- new SlashCommandBuilder().setName('vender').setDescription('Vende itens do inventário'),
- new SlashCommandBuilder().setName('inventario').setDescription('Mostra seu inventário'),
- new SlashCommandBuilder().setName('aura').setDescription('Mostra sua aura'),
- new SlashCommandBuilder().setName('depositar').setDescription('Deposita dinheiro').addIntegerOption(o=>o.setName('valor').setDescription('Valor').setRequired(true).setMinValue(1)),
- new SlashCommandBuilder().setName('sacar').setDescription('Saca dinheiro').addIntegerOption(o=>o.setName('valor').setDescription('Valor').setRequired(true).setMinValue(1)),
- new SlashCommandBuilder().setName('ranking').setDescription('Mostra ranking').addStringOption(o=>o.setName('tipo').setDescription('Categoria').setRequired(true).addChoices(
+ new SlashCommandBuilder().setName('perfil').setDescription('👤 Mostra seu perfil RPG'),
+ new SlashCommandBuilder().setName('pescar').setDescription('🎣 Pesca um peixe'),
+ new SlashCommandBuilder().setName('cacar').setDescription('🦌 Caça um animal'),
+ new SlashCommandBuilder().setName('minerar').setDescription('⛏️ Busca minérios'),
+ new SlashCommandBuilder().setName('plantar').setDescription('🌱 Planta uma semente').addStringOption(o=>o.setName('semente').setDescription('Tipo de semente').setRequired(true).addChoices(...Object.keys(crops).map(k=>({name:crops[k][0],value:k})))),
+ new SlashCommandBuilder().setName('colher').setDescription('🌾 Colhe plantações prontas'),
+ new SlashCommandBuilder().setName('vender').setDescription('💰 Vende itens do inventário'),
+ new SlashCommandBuilder().setName('inventario').setDescription('🎒 Mostra seu inventário'),
+ new SlashCommandBuilder().setName('aura').setDescription('🔮 Mostra sua aura'),
+ new SlashCommandBuilder().setName('depositar').setDescription('🏦 Deposita dinheiro').addIntegerOption(o=>o.setName('valor').setDescription('Valor').setRequired(true).setMinValue(1)),
+ new SlashCommandBuilder().setName('sacar').setDescription('💵 Saca dinheiro').addIntegerOption(o=>o.setName('valor').setDescription('Valor').setRequired(true).setMinValue(1)),
+ new SlashCommandBuilder().setName('ranking').setDescription('🏆 Mostra ranking').addStringOption(o=>o.setName('tipo').setDescription('Categoria').setRequired(true).addChoices(
   {name:'Riqueza',value:'riqueza'},{name:'Nível',value:'nivel'},{name:'Aura',value:'aura'},{name:'Pesca',value:'pesca'},{name:'Caça',value:'caca'},{name:'Mineração',value:'mineração'},{name:'PvP',value:'pvp'})),
- new SlashCommandBuilder().setName('dar').setDescription('Transfere dinheiro').addUserOption(o=>o.setName('usuario').setDescription('Destinatário').setRequired(true)).addIntegerOption(o=>o.setName('valor').setDescription('Valor').setRequired(true).setMinValue(1)),
- new SlashCommandBuilder().setName('pvp').setDescription('Desafia outro jogador').addUserOption(o=>o.setName('usuario').setDescription('Oponente').setRequired(true)),
- new SlashCommandBuilder().setName('admin').setDescription('Consulta logs administrativos').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+ new SlashCommandBuilder().setName('dar').setDescription('🎁 Transfere dinheiro').addUserOption(o=>o.setName('usuario').setDescription('Destinatário').setRequired(true)).addIntegerOption(o=>o.setName('valor').setDescription('Valor').setRequired(true).setMinValue(1)),
+ new SlashCommandBuilder().setName('pvp').setDescription('⚔️ Desafia outro jogador').addUserOption(o=>o.setName('usuario').setDescription('Oponente').setRequired(true)),
+ new SlashCommandBuilder().setName('admin').setDescription('🛠️ Consulta logs administrativos').setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 ].map(c=>c.toJSON());
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-async function register() { const rest = new REST({ version: '10' }).setToken(TOKEN); const route = GUILD_ID ? Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID) : Routes.applicationCommands(CLIENT_ID); await rest.put(route, { body: commands }); }
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+async function register() {
+ const rest = new REST({ version: '10' }).setToken(TOKEN);
+ const route = GUILD_ID ? Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID) : Routes.applicationCommands(CLIENT_ID);
+ await rest.put(route, { body: commands });
+ if (GUILD_ID) await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
+}
 function embed(title, description, color=0x5865f2) { return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setTimestamp(); }
 
 client.once('ready', () => console.log(`RPG online como ${client.user.tag}`));
+client.on('messageCreate', async message => {
+ if (message.author.bot || message.content.trim().toLowerCase() !== '!entrar') return;
+ const channel = message.member?.voice?.channel;
+ if (!channel) return message.reply('🎙️ Entre em um canal de voz primeiro e tente `!entrar` novamente.');
+ try {
+  joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator, selfDeaf: false });
+  await message.reply(`🎶 Entrei na call **${channel.name}**!`);
+ } catch (error) {
+  console.error(error);
+  await message.reply('❌ Não consegui entrar na call. Verifique se tenho permissão para conectar e falar.');
+ }
+});
 client.on('interactionCreate', async i => {
  if (!i.isChatInputCommand()) return;
  const p = user(i.user.id, i.user.username); p.name = i.user.username;

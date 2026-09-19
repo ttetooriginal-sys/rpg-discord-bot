@@ -2,13 +2,14 @@
   "name": "rpg-discord-bot",
   "version": "1.0.0",
   "description": "Bot RPG de Discord com economia, coleta, fazenda, PvP, aura e administração",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
   },
   "engines": { "node": ">=18" },
   "dependencies": {
+    "@discordjs/voice": "^0.17.0",
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.7"
   }
